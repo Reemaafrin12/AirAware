@@ -13,7 +13,7 @@ type CustomDropdownPickerProps<T extends string> = {
   label?: string;
   placeholder?: string;
   options: readonly T[] | T[];
-  selectedValue: T;
+  selectedValue?: T;
   onValueChange: (value: T) => void;
 };
 

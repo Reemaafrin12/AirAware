@@ -21,11 +21,18 @@ export default function FeedbackScreen() {
   const { profile } = useUser();
 
   const [name, setName] = useState(profile.name || '');
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(0);
   const [suggestions, setSuggestions] = useState('');
   const [recommend, setRecommend] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   const handleSubmitFeedback = () => {
+    const nextErrors: Record<string, string> = {};
+    if (!name.trim()) nextErrors.name = 'Name is required.';
+    if (rating < 1) nextErrors.rating = 'Select a star rating before submitting.';
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     const feedback = {
       name,
       rating,
@@ -62,16 +69,24 @@ export default function FeedbackScreen() {
           <TextInput
             style={styles.input}
             value={name}
-            onChangeText={setName}
+            onChangeText={(value) => {
+              setName(value);
+              setErrors((current) => ({ ...current, name: undefined }));
+            }}
             placeholder="Enter your name"
             placeholderTextColor="#8EA09D"
           />
+          {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
           <StarRatingSelector
             label="Rate Your Experience (1–5 Stars)"
             rating={rating}
-            onRatingChange={setRating}
+            onRatingChange={(value) => {
+              setRating(value);
+              setErrors((current) => ({ ...current, rating: undefined }));
+            }}
           />
+          {errors.rating ? <Text style={styles.errorText}>{errors.rating}</Text> : null}
 
           <Text style={styles.inputLabel}>Suggestions & Ideas</Text>
           <TextInput
@@ -157,6 +172,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -8,
   },
   multilineInput: {
     minHeight: 90,

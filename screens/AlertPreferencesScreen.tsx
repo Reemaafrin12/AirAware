@@ -30,13 +30,19 @@ const scaleOptions = [
 
 export default function AlertPreferencesScreen() {
   const [threshold, setThreshold] =
-    useState<(typeof thresholdOptions)[number]>('Unhealthy (101-150)');
+    useState<(typeof thresholdOptions)[number] | undefined>(undefined);
   const [dailyAdvisory, setDailyAdvisory] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [preferredScale, setPreferredScale] =
     useState<(typeof scaleOptions)[number]>('US AQI (0-500)');
+  const [thresholdError, setThresholdError] = useState<string | undefined>();
 
   const handleSavePreferences = () => {
+    if (!threshold) {
+      setThresholdError('Select an AQI Alert Threshold before saving.');
+      return;
+    }
+    setThresholdError(undefined);
     const preferences = {
       threshold,
       dailyAdvisory,
@@ -64,8 +70,12 @@ export default function AlertPreferencesScreen() {
             label="AQI Alert Threshold"
             options={thresholdOptions}
             selectedValue={threshold}
-            onValueChange={setThreshold}
+            onValueChange={(value) => {
+              setThreshold(value);
+              setThresholdError(undefined);
+            }}
           />
+          {thresholdError ? <Text style={styles.errorText}>{thresholdError}</Text> : null}
 
           <View style={styles.switchRow}>
             <View style={styles.switchTextContainer}>
@@ -178,6 +188,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
     paddingVertical: 15,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -8,
   },
   saveButtonText: {
     color: '#FFFFFF',

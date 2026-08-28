@@ -47,11 +47,23 @@ export default function AddFavoriteLocationScreen() {
   const [pinCode, setPinCode] = useState('');
   const [landmark, setLandmark] = useState('');
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   const handleSaveLocation = () => {
+    const nextErrors: Record<string, string> = {};
+    if (!locationName.trim()) nextErrors.locationName = 'Location Name is required.';
+    if (!city) nextErrors.city = 'City is required.';
+    if (!pinCode.trim()) nextErrors.pinCode = 'Area / PIN Code is required.';
+    else if (!/^\d+$/.test(pinCode.trim())) nextErrors.pinCode = 'PIN Code must contain numbers only.';
+    else if (pinCode.trim().length !== 6) {
+      nextErrors.pinCode = 'PIN Code must be exactly 6 digits.';
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     const newLocation: FavoriteLocation = {
       id: `loc-custom-${Date.now()}`,
-      locationName: locationName.trim() || `${city} Central`,
+      locationName: locationName.trim(),
       aqiValue: Math.floor(Math.random() * 80) + 40, // Simulated AQI sample
       category: 'Moderate',
     };
@@ -93,17 +105,25 @@ export default function AddFavoriteLocationScreen() {
           <TextInput
             style={styles.input}
             value={locationName}
-            onChangeText={setLocationName}
+            onChangeText={(value) => {
+              setLocationName(value);
+              setErrors((current) => ({ ...current, locationName: undefined }));
+            }}
             placeholder="e.g. Koramangala 5th Block"
             placeholderTextColor="#8EA09D"
           />
+          {errors.locationName ? <Text style={styles.errorText}>{errors.locationName}</Text> : null}
 
           <CustomDropdownPicker
             label="City"
             options={sampleCities}
             selectedValue={city}
-            onValueChange={setCity}
+            onValueChange={(value) => {
+              setCity(value);
+              setErrors((current) => ({ ...current, city: undefined }));
+            }}
           />
+          {errors.city ? <Text style={styles.errorText}>{errors.city}</Text> : null}
 
           <Text style={styles.inputLabel}>State</Text>
           <TextInput
@@ -118,11 +138,15 @@ export default function AddFavoriteLocationScreen() {
           <TextInput
             style={styles.input}
             value={pinCode}
-            onChangeText={setPinCode}
+            onChangeText={(value) => {
+              setPinCode(value);
+              setErrors((current) => ({ ...current, pinCode: undefined }));
+            }}
             placeholder="e.g. 560095"
             placeholderTextColor="#8EA09D"
             keyboardType="number-pad"
           />
+          {errors.pinCode ? <Text style={styles.errorText}>{errors.pinCode}</Text> : null}
 
           <Text style={styles.inputLabel}>Landmark (Optional)</Text>
           <TextInput
@@ -202,6 +226,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -8,
   },
   multilineInput: {
     minHeight: 76,

@@ -37,6 +37,7 @@ export default function ProfileScreen() {
   const [healthSensitivity, setHealthSensitivity] = useState<HealthSensitivity>(
     profile.healthSensitivity,
   );
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +76,14 @@ export default function ProfileScreen() {
   );
 
   const handleSaveChanges = () => {
+    const nextErrors: Record<string, string> = {};
+    if (!name.trim()) nextErrors.name = 'Full Name is required.';
+    if (!email.trim()) nextErrors.email = 'Email Address is required.';
+    if (!phone.trim()) nextErrors.phone = 'Phone Number is required.';
+    if (!address.trim()) nextErrors.address = 'Home Address is required.';
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     updateProfile({
       name,
       email,
@@ -124,41 +133,57 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               value={name}
-              onChangeText={setName}
+              onChangeText={(value) => {
+                setName(value);
+                setErrors((current) => ({ ...current, name: undefined }));
+              }}
               placeholder="Name"
               placeholderTextColor="#8EA09D"
             />
+            {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
 
             <Text style={styles.detailLabel}>Edit Email Address</Text>
             <TextInput
               style={styles.input}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                setEmail(value);
+                setErrors((current) => ({ ...current, email: undefined }));
+              }}
               placeholder="Email"
               placeholderTextColor="#8EA09D"
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
             <Text style={styles.detailLabel}>Edit Phone Number</Text>
             <TextInput
               style={styles.input}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(value) => {
+                setPhone(value);
+                setErrors((current) => ({ ...current, phone: undefined }));
+              }}
               placeholder="Phone"
               placeholderTextColor="#8EA09D"
               keyboardType="phone-pad"
             />
+            {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
 
             <Text style={styles.detailLabel}>Edit Home Address</Text>
             <TextInput
               style={[styles.input, styles.multilineInput]}
               value={address}
-              onChangeText={setAddress}
+              onChangeText={(value) => {
+                setAddress(value);
+                setErrors((current) => ({ ...current, address: undefined }));
+              }}
               placeholder="Home address"
               placeholderTextColor="#8EA09D"
               multiline
             />
+            {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
             <CustomRadioButton
               label="Health Sensitivity Level"
@@ -308,6 +333,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -8,
   },
   multilineInput: {
     minHeight: 76,

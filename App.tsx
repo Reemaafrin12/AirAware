@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -14,7 +14,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Provider as ReduxProvider, useDispatch } from 'react-redux';
 
 import { LocationProvider, useLocation } from './context/LocationContext';
@@ -41,6 +41,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import RegistrationScreen from './screens/RegistrationScreen';
 import SplashScreen from './screens/SplashScreen';
 import { setLoggedIn, store, type AppDispatch } from './store/store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AUTH_TOKEN_KEY, getValidAuthToken } from './auth';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<MainDrawerParamList>();
@@ -168,8 +170,14 @@ function MainApp({ navigation }: MainAppProps) {
     [navigation, setCurrentAQI],
   );
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     dispatch(setLoggedIn(false));
+    try {
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      Alert.alert('Logged Out', 'You have been securely logged out of AirAware.');
+    } catch {
+      Alert.alert('Logout Error', 'We could not clear the simulated authentication token.');
+    }
     navigation.reset({
       index: 0,
       routes: [{ name: 'LoginScreen' }],
@@ -236,6 +244,25 @@ function MainApp({ navigation }: MainAppProps) {
 }
 
 export default function App() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [hasValidToken, setHasValidToken] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getValidAuthToken().then((token) => {
+      if (!mounted) return;
+      setHasValidToken(Boolean(token));
+      setAuthChecked(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!authChecked) {
+    return <SplashScreen onFinish={() => undefined} />;
+  }
+
   return (
     <GestureHandlerRootView style={styles.appRoot}>
       <ReduxProvider store={store}>
@@ -243,7 +270,7 @@ export default function App() {
           <LocationProvider>
             <NavigationContainer>
               <RootStack.Navigator
-                initialRouteName="SplashScreen"
+                initialRouteName={hasValidToken ? 'MainApp' : 'SplashScreen'}
                 screenOptions={{
                   contentStyle: styles.stackContent,
                   headerStyle: styles.header,

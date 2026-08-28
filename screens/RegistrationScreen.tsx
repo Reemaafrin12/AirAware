@@ -49,8 +49,38 @@ export default function RegistrationScreen() {
   const [city, setCity] = useState<(typeof cityOptions)[number]>('Bengaluru');
   const [address, setAddress] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+
+  const clearError = (field: string) =>
+    setErrors((current) => ({ ...current, [field]: undefined }));
 
   const handleRegister = () => {
+    const nextErrors: Record<string, string | undefined> = {};
+    if (!fullName.trim()) nextErrors.fullName = 'Full Name is required.';
+    else if (!/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/.test(fullName.trim())) {
+      nextErrors.fullName = 'Use alphabetic characters and spaces only.';
+    }
+    if (!/^\d{10}$/.test(mobileNumber.trim())) {
+      nextErrors.mobileNumber = 'Mobile Number must be exactly 10 digits.';
+    }
+    if (!email.trim()) nextErrors.email = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      nextErrors.email = 'Enter a valid email address.';
+    }
+    if (!password) nextErrors.password = 'Password is required.';
+    else if (password.length < 8 || !/\d/.test(password)) {
+      nextErrors.password = 'Use at least 8 characters including one number.';
+    }
+    if (!confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.';
+    else if (confirmPassword !== password) nextErrors.confirmPassword = 'Passwords must match.';
+    if (!dob.trim()) nextErrors.dob = 'Date of Birth is required.';
+    if (!city) nextErrors.city = 'City is required.';
+    if (!address.trim()) nextErrors.address = 'Home Address is required.';
+    if (!acceptedTerms) nextErrors.acceptedTerms = 'Accept the Terms & Conditions to continue.';
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     const formData = {
       fullName,
       mobileNumber,
@@ -90,84 +120,119 @@ export default function RegistrationScreen() {
           <TextInput
             style={styles.input}
             value={fullName}
-            onChangeText={setFullName}
+            onChangeText={(value) => {
+              setFullName(value);
+              clearError('fullName');
+            }}
             placeholder="e.g. Aarav Mehta"
             placeholderTextColor="#8EA09D"
           />
+          {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
 
           <Text style={styles.inputLabel}>Mobile Number</Text>
           <TextInput
             style={styles.input}
             value={mobileNumber}
-            onChangeText={setMobileNumber}
+            onChangeText={(value) => {
+              setMobileNumber(value);
+              clearError('mobileNumber');
+            }}
             placeholder="+91 98765 43210"
             placeholderTextColor="#8EA09D"
             keyboardType="phone-pad"
           />
+          {errors.mobileNumber ? <Text style={styles.errorText}>{errors.mobileNumber}</Text> : null}
 
           <Text style={styles.inputLabel}>Email Address</Text>
           <TextInput
             style={styles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              clearError('email');
+            }}
             placeholder="aarav@example.com"
             placeholderTextColor="#8EA09D"
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
           <Text style={styles.inputLabel}>Password</Text>
           <TextInput
             style={styles.input}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              clearError('password');
+            }}
             placeholder="Enter password"
             placeholderTextColor="#8EA09D"
             secureTextEntry
           />
+          {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
 
           <Text style={styles.inputLabel}>Confirm Password</Text>
           <TextInput
             style={styles.input}
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(value) => {
+              setConfirmPassword(value);
+              clearError('confirmPassword');
+            }}
             placeholder="Confirm password"
             placeholderTextColor="#8EA09D"
             secureTextEntry
           />
+          {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
 
           <CustomRadioButton
             label="Gender"
             options={genderOptions}
             selectedOption={gender}
-            onSelect={setGender}
+            onSelect={(value) => {
+              setGender(value);
+              clearError('gender');
+            }}
           />
 
           <Text style={styles.inputLabel}>Date of Birth</Text>
           <TextInput
             style={styles.input}
             value={dob}
-            onChangeText={setDob}
+            onChangeText={(value) => {
+              setDob(value);
+              clearError('dob');
+            }}
             placeholder="YYYY-MM-DD"
             placeholderTextColor="#8EA09D"
           />
+          {errors.dob ? <Text style={styles.errorText}>{errors.dob}</Text> : null}
 
           <CustomDropdownPicker
             label="Select City"
             options={cityOptions}
             selectedValue={city}
-            onValueChange={setCity}
+            onValueChange={(value) => {
+              setCity(value);
+              clearError('city');
+            }}
           />
+          {errors.city ? <Text style={styles.errorText}>{errors.city}</Text> : null}
 
           <Text style={styles.inputLabel}>Home Address</Text>
           <TextInput
             style={[styles.input, styles.multilineInput]}
             value={address}
-            onChangeText={setAddress}
+            onChangeText={(value) => {
+              setAddress(value);
+              clearError('address');
+            }}
             placeholder="Street name, landmark, area..."
             placeholderTextColor="#8EA09D"
             multiline
           />
+          {errors.address ? <Text style={styles.errorText}>{errors.address}</Text> : null}
 
           <View style={styles.switchRow}>
             <View style={styles.switchTextContainer}>
@@ -176,11 +241,15 @@ export default function RegistrationScreen() {
             </View>
             <Switch
               value={acceptedTerms}
-              onValueChange={setAcceptedTerms}
+              onValueChange={(value) => {
+                setAcceptedTerms(value);
+                clearError('acceptedTerms');
+              }}
               trackColor={{ false: '#D7E3E0', true: '#267D70' }}
               thumbColor="#FFFFFF"
             />
           </View>
+          {errors.acceptedTerms ? <Text style={styles.errorText}>{errors.acceptedTerms}</Text> : null}
 
           <TouchableOpacity style={styles.submitButton} onPress={handleRegister}>
             <Text style={styles.submitButtonText}>Register</Text>
@@ -247,6 +316,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 10,
+    marginTop: -8,
   },
   multilineInput: {
     minHeight: 76,
