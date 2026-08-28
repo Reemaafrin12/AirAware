@@ -1,5 +1,12 @@
-import { useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useDispatch } from 'react-redux';
 
@@ -11,6 +18,11 @@ import {
   type AppDispatch,
 } from '../store/store';
 import type { AirQualityCategory } from '../types/airQuality';
+import {
+  CITY_COORDINATES,
+  DEFAULT_AQI_COORDINATES,
+  fetchLiveAQI,
+} from '../api/aqiService';
 
 type AQIDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -57,13 +69,42 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
     removeFavorite,
     setCurrentAQI,
   } = useLocation();
-  const reading = currentAQI.id === route.params.id ? currentAQI : route.params;
+  const [reading, setReading] = useState(() =>
+    currentAQI.id === route.params.id ? currentAQI : route.params,
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { aqiValue, category, locationName } = reading;
   const categoryStyle = categoryStyles[category];
   const isFavorite = favoriteLocations.some((location) => location.id === reading.id);
 
   useEffect(() => {
-    setCurrentAQI(route.params);
+    let active = true;
+    const baseReading = route.params;
+    const coordinates =
+      baseReading.coordinates ?? CITY_COORDINATES[baseReading.locationName] ?? DEFAULT_AQI_COORDINATES;
+    setReading(baseReading);
+    setCurrentAQI(baseReading);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    fetchLiveAQI(coordinates.lat, coordinates.lng)
+      .then((liveReading) => {
+        if (!active) return;
+        setReading(liveReading);
+        setCurrentAQI(liveReading);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [route.params, setCurrentAQI]);
 
   const handleFavoriteToggle = () => {
@@ -88,6 +129,7 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
       <View style={styles.aqiPanel}>
         <Text style={styles.panelLabel}>Current AQI</Text>
         <Text style={styles.aqiValue}>{aqiValue}</Text>
+        {isLoading ? <ActivityIndicator color="#267D70" /> : null}
         <View
           style={[
             styles.categoryBadge,
@@ -115,22 +157,32 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
         </Text>
       </TouchableOpacity>
 
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
       <View style={styles.metricGrid}>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>PM2.5</Text>
-          <Text style={styles.metricValue}>{Math.max(8, Math.round(aqiValue / 3))}</Text>
+          <Text style={styles.metricValue}>
+            {reading.pollutants?.pm25 ?? Math.max(8, Math.round(aqiValue / 3))}
+          </Text>
         </View>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>PM10</Text>
-          <Text style={styles.metricValue}>{Math.max(18, Math.round(aqiValue / 2))}</Text>
+          <Text style={styles.metricValue}>
+            {reading.pollutants?.pm10 ?? Math.max(18, Math.round(aqiValue / 2))}
+          </Text>
         </View>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>Ozone</Text>
-          <Text style={styles.metricValue}>{Math.max(11, Math.round(aqiValue / 4))}</Text>
+          <Text style={styles.metricValue}>
+            {reading.pollutants?.o3 ?? Math.max(11, Math.round(aqiValue / 4))}
+          </Text>
         </View>
         <View style={styles.metricCard}>
           <Text style={styles.metricLabel}>NO2</Text>
-          <Text style={styles.metricValue}>{Math.max(7, Math.round(aqiValue / 5))}</Text>
+          <Text style={styles.metricValue}>
+            {reading.pollutants?.no2 ?? Math.max(7, Math.round(aqiValue / 5))}
+          </Text>
         </View>
       </View>
     </ScrollView>
@@ -166,6 +218,12 @@ const styles = StyleSheet.create({
     color: '#5C706D',
     fontSize: 16,
     lineHeight: 23,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 18,
   },
   aqiPanel: {
     alignItems: 'center',

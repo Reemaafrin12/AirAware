@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { useLocation } from '../context/LocationContext';
 import { sampleHomeAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
 import type { AQIReading } from '../types/airQuality';
+import { DEFAULT_AQI_COORDINATES, fetchLiveAQI } from '../api/aqiService';
 
 export default function HomeScreen() {
   const openAQIDetails = useOpenAQIDetails();
@@ -13,14 +21,32 @@ export default function HomeScreen() {
   const [selectedLocation, setSelectedLocation] = useState<AQIReading | null>(null);
   const [currentAQIReading, setCurrentAQIReading] = useState<AQIReading>(currentAQI);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const initialReadingRef = useRef(currentAQI);
 
   useEffect(() => {
-    const initialReading = sampleHomeAQIReadings[0];
+    const initialReading = initialReadingRef.current;
 
     setSelectedLocation(initialReading);
     setCurrentAQIReading(initialReading);
     setCurrentAQI(initialReading);
     setToastMessage('Welcome back!');
+    setIsLoading(true);
+    fetchLiveAQI(
+      initialReading.coordinates?.lat ?? DEFAULT_AQI_COORDINATES.lat,
+      initialReading.coordinates?.lng ?? DEFAULT_AQI_COORDINATES.lng,
+    )
+      .then((liveReading) => {
+        setSelectedLocation(liveReading);
+        setCurrentAQIReading(liveReading);
+        setCurrentAQI(liveReading);
+        setErrorMessage(null);
+      })
+      .catch((error: unknown) => {
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+      })
+      .finally(() => setIsLoading(false));
 
     const timer = setTimeout(() => setToastMessage(null), 2400);
 
@@ -44,10 +70,25 @@ export default function HomeScreen() {
     );
   }, [searchText]);
 
-  const handleLocationSelect = (location: AQIReading) => {
+  const handleLocationSelect = async (location: AQIReading) => {
     setSelectedLocation(location);
     setCurrentAQIReading(location);
     setCurrentAQI(location);
+    setIsLoading(true);
+    try {
+      const liveReading = await fetchLiveAQI(
+        location.coordinates?.lat ?? DEFAULT_AQI_COORDINATES.lat,
+        location.coordinates?.lng ?? DEFAULT_AQI_COORDINATES.lng,
+      );
+      setSelectedLocation(liveReading);
+      setCurrentAQIReading(liveReading);
+      setCurrentAQI(liveReading);
+      setErrorMessage(null);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,11 +109,13 @@ export default function HomeScreen() {
           style={styles.summaryCard}>
           <Text style={styles.cardLabel}>Current AQI</Text>
           <Text style={styles.aqiValue}>{currentAQIReading.aqiValue}</Text>
+          {isLoading ? <ActivityIndicator color="#267D70" /> : null}
           <Text style={styles.cardStatus}>
             {currentAQIReading.category} air quality near{' '}
             {currentAQIReading.locationName}
           </Text>
         </TouchableOpacity>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
         <TextInput
           style={styles.searchInput}
@@ -177,6 +220,12 @@ const styles = StyleSheet.create({
     color: '#267D70',
     fontSize: 16,
     fontWeight: '800',
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 16,
   },
   searchInput: {
     height: 52,

@@ -1,13 +1,37 @@
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import LocationListItem from '../components/LocationListItem';
 import { useLocation } from '../context/LocationContext';
 import { sampleCityAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
+import { CITY_COORDINATES, fetchLiveAQI } from '../api/aqiService';
+import type { AQIReading } from '../types/airQuality';
+
+const searchableCities: AQIReading[] = Object.keys(CITY_COORDINATES).map((cityName) => {
+  const sample = sampleCityAQIReadings.find((item) => item.locationName === cityName);
+  return (
+    sample ?? {
+      id: cityName.toLowerCase(),
+      locationName: cityName,
+      aqiValue: 0,
+      category: 'Good',
+    }
+  );
+});
 
 export default function CitySearchScreen() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [liveReadings, setLiveReadings] = useState<Record<string, AQIReading>>({});
+  const [loadingCityId, setLoadingCityId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setCurrentAQI } = useLocation();
   const openAQIDetails = useOpenAQIDetails();
 
@@ -15,13 +39,34 @@ export default function CitySearchScreen() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     if (!normalizedSearch) {
-      return sampleCityAQIReadings;
+      return searchableCities;
     }
 
-    return sampleCityAQIReadings.filter((city) =>
+    return searchableCities.filter((city) =>
       city.locationName.toLowerCase().includes(normalizedSearch),
     );
   }, [searchTerm]);
+
+  const fetchCityReading = async (city: AQIReading) => {
+    const coordinates = CITY_COORDINATES[city.locationName];
+    if (!coordinates) {
+      setErrorMessage(`No coordinates are configured for ${city.locationName}.`);
+      return;
+    }
+
+    setLoadingCityId(city.id);
+    setErrorMessage(null);
+    try {
+      const liveReading = await fetchLiveAQI(coordinates.lat, coordinates.lng);
+      setLiveReadings((current) => ({ ...current, [city.id]: liveReading }));
+      setCurrentAQI(liveReading);
+      openAQIDetails(liveReading);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+    } finally {
+      setLoadingCityId(null);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -35,24 +80,34 @@ export default function CitySearchScreen() {
         placeholder="Search city"
         placeholderTextColor="#8EA09D"
         value={searchTerm}
-        onChangeText={setSearchTerm}
+        onChangeText={(value) => {
+          setSearchTerm(value);
+          setErrorMessage(null);
+        }}
+        onSubmitEditing={() => {
+          const firstMatch = filteredCities[0];
+          if (firstMatch) void fetchCityReading(firstMatch);
+        }}
+        returnKeyType="search"
         autoCapitalize="words"
       />
+      {loadingCityId ? <ActivityIndicator color="#267D70" style={styles.loading} /> : null}
+      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
       <FlatList
         data={filteredCities}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <LocationListItem
-            name={item.locationName}
-            aqiValue={item.aqiValue}
-            category={item.category}
-            onPress={() => {
-              setCurrentAQI(item);
-              openAQIDetails(item);
-            }}
-          />
-        )}
+        renderItem={({ item }) => {
+          const reading = liveReadings[item.id] ?? item;
+          return (
+            <LocationListItem
+              name={reading.locationName}
+              aqiValue={reading.aqiValue}
+              category={reading.category}
+              onPress={() => void fetchCityReading(item)}
+            />
+          );
+        }}
         ListEmptyComponent={<Text style={styles.emptyText}>No cities found</Text>}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
@@ -102,5 +157,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingTop: 28,
     textAlign: 'center',
+  },
+  loading: {
+    marginBottom: 10,
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
   },
 });
