@@ -33,6 +33,24 @@ export const CITY_COORDINATES: Record<string, AQICoordinates> = {
   Ahmedabad: { lat: 23.0225, lng: 72.5714 },
 };
 
+/**
+ * WAQI's city-centre `/geo:` lookups are unreliable for several of these
+ * locations. Use a verified, named station feed for city search instead.
+ */
+export const CITY_STATIONS: Record<
+  string,
+  { stationId: number; coordinates: AQICoordinates }
+> = {
+  Bengaluru: { stationId: 11270, coordinates: { lat: 12.938539, lng: 77.5901 } },
+  Chennai: { stationId: 13737, coordinates: { lat: 13.1036, lng: 80.2909 } },
+  Delhi: { stationId: 10110, coordinates: { lat: 28.499727, lng: 77.267095 } },
+  Hyderabad: { stationId: 14125, coordinates: { lat: 17.417094, lng: 78.457437 } },
+  Kolkata: { stationId: 12746, coordinates: { lat: 22.5367507, lng: 88.3638022 } },
+  Mumbai: { stationId: 12454, coordinates: { lat: 19.0863, lng: 72.8888 } },
+  Pune: { stationId: 3760, coordinates: { lat: 18.529603, lng: 73.849586 } },
+  Ahmedabad: { stationId: 8192, coordinates: { lat: 23.002657, lng: 72.591912 } },
+};
+
 type WaqiMetric = { v?: number | string };
 type WaqiData = {
   aqi?: number | string;
@@ -57,8 +75,19 @@ export type UserProfileData = {
   preferences: { notifications: boolean };
 };
 
-/** Fetches and normalizes one live WAQI reading for the app's existing AQI model. */
-export async function fetchLiveAQI(lat: number, lng: number): Promise<AQIReading> {
+/** Fetches a verified WAQI station feed, avoiding unreliable city-centre geo lookups. */
+export async function fetchLiveAQIByStation(
+  stationId: number,
+  fallbackCoordinates: AQICoordinates,
+): Promise<AQIReading> {
+  return fetchWaqiFeed(`@${stationId}`, fallbackCoordinates, stationId);
+}
+
+async function fetchWaqiFeed(
+  feedPath: string,
+  fallbackCoordinates: AQICoordinates,
+  stationId: number,
+): Promise<AQIReading> {
   if (!WAQI_TOKEN) {
     throw new Error(
       'WAQI token is missing. Add EXPO_PUBLIC_WAQI_TOKEN to your .env.local file.',
@@ -66,7 +95,7 @@ export async function fetchLiveAQI(lat: number, lng: number): Promise<AQIReading
   }
 
   const response = await fetch(
-    `${WAQI_BASE_URL}/geo:${lat};${lng}/?token=${encodeURIComponent(WAQI_TOKEN)}`,
+    `${WAQI_BASE_URL}/${feedPath}/?token=${encodeURIComponent(WAQI_TOKEN)}`,
   );
 
   if (!response.ok) {
@@ -86,14 +115,17 @@ export async function fetchLiveAQI(lat: number, lng: number): Promise<AQIReading
   const cityCoordinates = payload.data.city?.geo;
   const coordinates = cityCoordinates
     ? { lat: Number(cityCoordinates[0]), lng: Number(cityCoordinates[1]) }
-    : { lat, lng };
+    : fallbackCoordinates;
 
   return {
-    id: `waqi-${lat}-${lng}`,
-    locationName: payload.data.city?.name || `Location (${lat.toFixed(3)}, ${lng.toFixed(3)})`,
+    id: `waqi-${feedPath}`,
+    locationName:
+      payload.data.city?.name ||
+      `Location (${fallbackCoordinates.lat.toFixed(3)}, ${fallbackCoordinates.lng.toFixed(3)})`,
     aqiValue: Math.round(aqiValue),
     category: categoryForAQI(aqiValue),
     coordinates,
+    stationId,
     pollutants: normalizePollutants(payload.data.iaqi),
   };
 }

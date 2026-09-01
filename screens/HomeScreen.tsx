@@ -12,7 +12,7 @@ import { useLocation } from '../context/LocationContext';
 import { sampleHomeAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
 import type { AQIReading } from '../types/airQuality';
-import { DEFAULT_AQI_COORDINATES, fetchLiveAQI } from '../api/aqiService';
+import { CITY_STATIONS, fetchLiveAQIByStation } from '../api/aqiService';
 
 export default function HomeScreen() {
   const openAQIDetails = useOpenAQIDetails();
@@ -33,9 +33,9 @@ export default function HomeScreen() {
     setCurrentAQI(initialReading);
     setToastMessage('Welcome back!');
     setIsLoading(true);
-    fetchLiveAQI(
-      initialReading.coordinates?.lat ?? DEFAULT_AQI_COORDINATES.lat,
-      initialReading.coordinates?.lng ?? DEFAULT_AQI_COORDINATES.lng,
+    fetchLiveAQIByStation(
+      CITY_STATIONS.Bengaluru.stationId,
+      CITY_STATIONS.Bengaluru.coordinates,
     )
       .then((liveReading) => {
         setSelectedLocation(liveReading);
@@ -76,9 +76,9 @@ export default function HomeScreen() {
     setCurrentAQI(location);
     setIsLoading(true);
     try {
-      const liveReading = await fetchLiveAQI(
-        location.coordinates?.lat ?? DEFAULT_AQI_COORDINATES.lat,
-        location.coordinates?.lng ?? DEFAULT_AQI_COORDINATES.lng,
+      const liveReading = await fetchLiveAQIByStation(
+        CITY_STATIONS.Bengaluru.stationId,
+        CITY_STATIONS.Bengaluru.coordinates,
       );
       setSelectedLocation(liveReading);
       setCurrentAQIReading(liveReading);

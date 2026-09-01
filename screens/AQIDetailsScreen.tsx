@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +12,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useDispatch } from 'react-redux';
 
 import { useLocation } from '../context/LocationContext';
-import type { RootStackParamList } from '../navigation/types';
+import type { AQIDetailsParams, RootStackParamList } from '../navigation/types';
 import {
   addFavoriteLocation,
   removeFavoriteLocation,
@@ -19,9 +20,8 @@ import {
 } from '../store/store';
 import type { AirQualityCategory } from '../types/airQuality';
 import {
-  CITY_COORDINATES,
-  DEFAULT_AQI_COORDINATES,
-  fetchLiveAQI,
+  CITY_STATIONS,
+  fetchLiveAQIByStation,
 } from '../api/aqiService';
 
 type AQIDetailsScreenProps = NativeStackScreenProps<
@@ -62,16 +62,12 @@ const advisoryByCategory: Record<AirQualityCategory, string> = {
 
 export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
   const dispatch = useDispatch<AppDispatch>();
-  const {
-    addFavorite,
-    currentAQI,
-    favoriteLocations,
-    removeFavorite,
-    setCurrentAQI,
-  } = useLocation();
-  const [reading, setReading] = useState(() =>
-    currentAQI.id === route.params.id ? currentAQI : route.params,
-  );
+  const { addFavorite, favoriteLocations, removeFavorite, setCurrentAQI } = useLocation();
+  const [refreshedReading, setRefreshedReading] = useState<AQIDetailsParams | null>(null);
+  // Route params are the synchronous source of truth. A prior detail screen's
+  // result can never be rendered while React Navigation supplies new params.
+  const reading =
+    refreshedReading?.id === route.params.id ? refreshedReading : route.params;
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { aqiValue, category, locationName } = reading;
@@ -81,22 +77,35 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
   useEffect(() => {
     let active = true;
     const baseReading = route.params;
-    const coordinates =
-      baseReading.coordinates ?? CITY_COORDINATES[baseReading.locationName] ?? DEFAULT_AQI_COORDINATES;
-    setReading(baseReading);
+    const station =
+      baseReading.stationId !== undefined && baseReading.coordinates
+        ? { stationId: baseReading.stationId, coordinates: baseReading.coordinates }
+        : CITY_STATIONS[baseReading.locationName];
+    setRefreshedReading(null);
     setCurrentAQI(baseReading);
+    // City Search has just fetched this exact station, so refreshing here only
+    // duplicates the request. Unknown legacy/sample readings are displayed as-is.
+    if (baseReading.alreadyFetched || !station) {
+      setIsLoading(false);
+      setErrorMessage(null);
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
-    fetchLiveAQI(coordinates.lat, coordinates.lng)
+    fetchLiveAQIByStation(station.stationId, station.coordinates)
       .then((liveReading) => {
         if (!active) return;
-        setReading(liveReading);
+        setRefreshedReading(liveReading);
         setCurrentAQI(liveReading);
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+        const message = error instanceof Error ? error.message : 'Unable to load live AQI.';
+        console.error('AQI details refresh failed:', error);
+        setErrorMessage(message);
+        Alert.alert('Unable to load live AQI', message);
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -105,7 +114,7 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
     return () => {
       active = false;
     };
-  }, [route.params, setCurrentAQI]);
+  }, [route.key, route.params, setCurrentAQI]);
 
   const handleFavoriteToggle = () => {
     if (isFavorite) {

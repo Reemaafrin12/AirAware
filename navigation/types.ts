@@ -2,7 +2,13 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 import type { AQIReading } from '../types/airQuality';
 
-export type AQIDetailsParams = AQIReading;
+/**
+ * `alreadyFetched` is set by CitySearch after a successful live request so the
+ * detail screen can display that exact result without making a second request.
+ */
+export type AQIDetailsParams = AQIReading & {
+  alreadyFetched?: boolean;
+};
 
 export type MainTabParamList = {
   Home: undefined;

@@ -18,6 +18,8 @@ export type AQIReading = {
   aqiValue: number;
   category: AirQualityCategory;
   coordinates?: AQICoordinates;
+  /** WAQI station used to obtain this reading, when one is known. */
+  stationId?: number;
   pollutants?: AQIPollutants;
 };
 

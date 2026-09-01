@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -12,7 +13,11 @@ import LocationListItem from '../components/LocationListItem';
 import { useLocation } from '../context/LocationContext';
 import { sampleCityAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
-import { CITY_COORDINATES, fetchLiveAQI } from '../api/aqiService';
+import {
+  CITY_COORDINATES,
+  CITY_STATIONS,
+  fetchLiveAQIByStation,
+} from '../api/aqiService';
 import type { AQIReading } from '../types/airQuality';
 
 const searchableCities: AQIReading[] = Object.keys(CITY_COORDINATES).map((cityName) => {
@@ -48,21 +53,27 @@ export default function CitySearchScreen() {
   }, [searchTerm]);
 
   const fetchCityReading = async (city: AQIReading) => {
-    const coordinates = CITY_COORDINATES[city.locationName];
-    if (!coordinates) {
-      setErrorMessage(`No coordinates are configured for ${city.locationName}.`);
+    const station = CITY_STATIONS[city.locationName];
+    if (!station) {
+      setErrorMessage(`No WAQI station is configured for ${city.locationName}.`);
       return;
     }
 
     setLoadingCityId(city.id);
     setErrorMessage(null);
     try {
-      const liveReading = await fetchLiveAQI(coordinates.lat, coordinates.lng);
+      const liveReading = await fetchLiveAQIByStation(
+        station.stationId,
+        station.coordinates,
+      );
       setLiveReadings((current) => ({ ...current, [city.id]: liveReading }));
       setCurrentAQI(liveReading);
-      openAQIDetails(liveReading);
+      openAQIDetails({ ...liveReading, alreadyFetched: true });
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+      const message = error instanceof Error ? error.message : 'Unable to load live AQI.';
+      console.error(`City AQI fetch failed for ${city.locationName}:`, error);
+      setErrorMessage(message);
+      Alert.alert(`Unable to load ${city.locationName} AQI`, message);
     } finally {
       setLoadingCityId(null);
     }
