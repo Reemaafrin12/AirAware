@@ -19,6 +19,7 @@ export type UserProfile = {
 
 type UserContextValue = {
   profile: UserProfile;
+  sensitivityCategory: HealthSensitivity;
   updateProfile: (updates: Partial<UserProfile>) => void;
 };
 
@@ -49,6 +50,7 @@ export function UserProvider({ children }: UserProviderProps) {
   const value = useMemo(
     () => ({
       profile,
+      sensitivityCategory: profile.healthSensitivity,
       updateProfile,
     }),
     [profile, updateProfile],

@@ -2,6 +2,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 
 import type { DrawerPlaceholderRoute, MainDrawerParamList } from '../navigation/types';
+import FavouriteAreasScreen from './FavouriteAreasScreen';
+import HealthProfileScreen from './HealthProfileScreen';
+import HelpSupportScreen from './HelpSupportScreen';
 
 type DrawerPlaceholderScreenProps = {
   route: RouteProp<MainDrawerParamList, DrawerPlaceholderRoute>;
@@ -38,6 +41,10 @@ const placeholderCopy: Record<
 };
 
 export default function DrawerPlaceholderScreen({ route }: DrawerPlaceholderScreenProps) {
+  if (route.name === 'FavouriteAreas') return <FavouriteAreasScreen />;
+  if (route.name === 'HealthProfile') return <HealthProfileScreen />;
+  if (route.name === 'HelpSupport') return <HelpSupportScreen />;
+
   const copy = placeholderCopy[route.name];
 
   return (
