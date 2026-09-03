@@ -12,7 +12,11 @@ import { useLocation } from '../context/LocationContext';
 import { sampleHomeAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
 import type { AQIReading } from '../types/airQuality';
-import { CITY_STATIONS, fetchLiveAQIByStation } from '../api/aqiService';
+import {
+  AIR_QUALITY_LOAD_ERROR_MESSAGE,
+  CITY_STATIONS,
+  fetchLiveAQIByStation,
+} from '../api/aqiService';
 
 export default function HomeScreen() {
   const openAQIDetails = useOpenAQIDetails();
@@ -44,7 +48,8 @@ export default function HomeScreen() {
         setErrorMessage(null);
       })
       .catch((error: unknown) => {
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+        console.error('Home AQI initial load failed:', error);
+        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
       })
       .finally(() => setIsLoading(false));
 
@@ -85,7 +90,8 @@ export default function HomeScreen() {
       setCurrentAQI(liveReading);
       setErrorMessage(null);
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to load live AQI.');
+      console.error('Home AQI location refresh failed:', error);
+      setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
     } finally {
       setIsLoading(false);
     }

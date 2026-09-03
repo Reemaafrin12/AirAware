@@ -20,6 +20,7 @@ import {
 } from '../store/store';
 import type { AirQualityCategory } from '../types/airQuality';
 import {
+  AIR_QUALITY_LOAD_ERROR_MESSAGE,
   CITY_STATIONS,
   fetchLiveAQIByStation,
 } from '../api/aqiService';
@@ -102,10 +103,9 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
       })
       .catch((error: unknown) => {
         if (!active) return;
-        const message = error instanceof Error ? error.message : 'Unable to load live AQI.';
         console.error('AQI details refresh failed:', error);
-        setErrorMessage(message);
-        Alert.alert('Unable to load live AQI', message);
+        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+        Alert.alert('Unable to load live AQI', AIR_QUALITY_LOAD_ERROR_MESSAGE);
       })
       .finally(() => {
         if (active) setIsLoading(false);

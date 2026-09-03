@@ -16,6 +16,9 @@ import type {
 const WAQI_BASE_URL = 'https://api.waqi.info/feed';
 const WAQI_TOKEN = process.env.EXPO_PUBLIC_WAQI_TOKEN;
 
+export const AIR_QUALITY_LOAD_ERROR_MESSAGE =
+  'Unable to load air quality data. Please check your internet connection and try again.';
+
 export const DEFAULT_AQI_COORDINATES: AQICoordinates = {
   lat: 12.9716,
   lng: 77.5946,

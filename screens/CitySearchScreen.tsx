@@ -14,6 +14,7 @@ import { useLocation } from '../context/LocationContext';
 import { sampleCityAQIReadings } from '../data/sampleAQIData';
 import { useOpenAQIDetails } from '../navigation/AQIDetailsNavigationContext';
 import {
+  AIR_QUALITY_LOAD_ERROR_MESSAGE,
   CITY_COORDINATES,
   CITY_STATIONS,
   fetchLiveAQIByStation,
@@ -70,10 +71,9 @@ export default function CitySearchScreen() {
       setCurrentAQI(liveReading);
       openAQIDetails({ ...liveReading, alreadyFetched: true });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unable to load live AQI.';
       console.error(`City AQI fetch failed for ${city.locationName}:`, error);
-      setErrorMessage(message);
-      Alert.alert(`Unable to load ${city.locationName} AQI`, message);
+      setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+      Alert.alert(`Unable to load ${city.locationName} AQI`, AIR_QUALITY_LOAD_ERROR_MESSAGE);
     } finally {
       setLoadingCityId(null);
     }
