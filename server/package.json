@@ -1,0 +1,14 @@
+{
+  "name": "airaware-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AirAware Experiment 9 sample Express API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0"
+  }
+}
