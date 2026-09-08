@@ -1,6 +1,7 @@
 // Axios is intentionally installed by the developer with `npx expo install axios`.
 // @ts-ignore Keep this module type-checkable until that user-managed install is complete.
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -18,6 +19,13 @@ const WAQI_TOKEN = process.env.EXPO_PUBLIC_WAQI_TOKEN;
 
 export const AIR_QUALITY_LOAD_ERROR_MESSAGE =
   'Unable to load air quality data. Please check your internet connection and try again.';
+
+const lastAQIStorageKey = (stationId: number) => `lastAQI:${stationId}`;
+
+type CachedAQIReading = {
+  reading: AQIReading;
+  fetchedAt: number;
+};
 
 export const DEFAULT_AQI_COORDINATES: AQICoordinates = {
   lat: 12.9716,
@@ -86,6 +94,28 @@ export async function fetchLiveAQIByStation(
   return fetchWaqiFeed(`@${stationId}`, fallbackCoordinates, stationId);
 }
 
+/** Retrieves the most recent station-specific reading for offline use. */
+export async function getCachedAQIByStation(
+  stationId: number,
+): Promise<AQIReading | null> {
+  try {
+    const value = await AsyncStorage.getItem(lastAQIStorageKey(stationId));
+    if (!value) return null;
+
+    const cached = JSON.parse(value) as CachedAQIReading;
+    if (!cached.reading || !Number.isFinite(cached.fetchedAt)) return null;
+
+    return {
+      ...cached.reading,
+      fetchedAt: cached.fetchedAt,
+      dataSource: 'cache',
+    };
+  } catch (error) {
+    console.error(`Unable to read cached AQI for station ${stationId}:`, error);
+    return null;
+  }
+}
+
 async function fetchWaqiFeed(
   feedPath: string,
   fallbackCoordinates: AQICoordinates,
@@ -120,7 +150,8 @@ async function fetchWaqiFeed(
     ? { lat: Number(cityCoordinates[0]), lng: Number(cityCoordinates[1]) }
     : fallbackCoordinates;
 
-  return {
+  const fetchedAt = Date.now();
+  const reading: AQIReading = {
     id: `waqi-${feedPath}`,
     locationName:
       payload.data.city?.name ||
@@ -130,7 +161,18 @@ async function fetchWaqiFeed(
     coordinates,
     stationId,
     pollutants: normalizePollutants(payload.data.iaqi),
+    fetchedAt,
+    dataSource: 'live',
   };
+
+  try {
+    const cached: CachedAQIReading = { reading, fetchedAt };
+    await AsyncStorage.setItem(lastAQIStorageKey(stationId), JSON.stringify(cached));
+  } catch (error) {
+    console.error(`Unable to cache AQI for station ${stationId}:`, error);
+  }
+
+  return reading;
 }
 
 /**

@@ -63,6 +63,9 @@ const locationSlice = createSlice({
         (location) => location.id !== action.payload,
       );
     },
+    setFavoriteLocations: (state, action: PayloadAction<FavoriteLocation[]>) => {
+      state.favoriteLocations = action.payload;
+    },
   },
 });
 
@@ -74,7 +77,7 @@ export const store = configureStore({
 });
 
 export const { setLoggedIn, updateBasicUserInfo } = userSlice.actions;
-export const { addFavoriteLocation, removeFavoriteLocation } =
+export const { addFavoriteLocation, removeFavoriteLocation, setFavoriteLocations } =
   locationSlice.actions;
 
 export type RootState = ReturnType<typeof store.getState>;

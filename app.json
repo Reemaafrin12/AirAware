@@ -3,6 +3,10 @@
     "name": "AirAware",
     "slug": "AirAware",
     "version": "1.0.0",
+    "updates": {
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "airaware",

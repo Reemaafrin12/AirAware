@@ -16,47 +16,84 @@ import {
   AIR_QUALITY_LOAD_ERROR_MESSAGE,
   CITY_STATIONS,
   fetchLiveAQIByStation,
+  getCachedAQIByStation,
 } from '../api/aqiService';
+import { formatAQIUpdateStatus } from '../utils/aqiStatus';
+import { useMinuteClock } from '../utils/useMinuteClock';
 
 export default function HomeScreen() {
   const openAQIDetails = useOpenAQIDetails();
-  const { currentAQI, favoriteLocations, setCurrentAQI } = useLocation();
+  const {
+    currentAQI,
+    favoriteLocations,
+    hasSavedHomeLocation,
+    isLocationHydrated,
+    setCurrentAQI,
+  } = useLocation();
   const [searchText, setSearchText] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<AQIReading | null>(null);
   const [currentAQIReading, setCurrentAQIReading] = useState<AQIReading>(currentAQI);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const initialReadingRef = useRef(currentAQI);
+  const now = useMinuteClock();
+  const currentAQIRef = useRef(currentAQI);
 
   useEffect(() => {
-    const initialReading = initialReadingRef.current;
+    currentAQIRef.current = currentAQI;
+  }, [currentAQI]);
+
+  useEffect(() => {
+    if (!isLocationHydrated) return;
+    const initialReading = currentAQIRef.current;
 
     setSelectedLocation(initialReading);
     setCurrentAQIReading(initialReading);
     setCurrentAQI(initialReading);
     setToastMessage('Welcome back!');
     setIsLoading(true);
-    fetchLiveAQIByStation(
-      CITY_STATIONS.Bengaluru.stationId,
-      CITY_STATIONS.Bengaluru.coordinates,
-    )
-      .then((liveReading) => {
-        setSelectedLocation(liveReading);
-        setCurrentAQIReading(liveReading);
-        setCurrentAQI(liveReading);
-        setErrorMessage(null);
-      })
-      .catch((error: unknown) => {
-        console.error('Home AQI initial load failed:', error);
-        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
-      })
-      .finally(() => setIsLoading(false));
+    const refreshTarget = initialReading.stationId
+      ? {
+          stationId: initialReading.stationId,
+          coordinates: initialReading.coordinates ?? CITY_STATIONS.Bengaluru.coordinates,
+        }
+      : hasSavedHomeLocation
+        ? null
+        : CITY_STATIONS.Bengaluru;
+
+    if (refreshTarget) {
+      fetchLiveAQIByStation(
+        refreshTarget.stationId,
+        refreshTarget.coordinates,
+      )
+        .then((liveReading) => {
+          setSelectedLocation(liveReading);
+          setCurrentAQIReading(liveReading);
+          setCurrentAQI(liveReading);
+          setErrorMessage(null);
+        })
+        .catch((error: unknown) => {
+          console.error('Home AQI initial load failed:', error);
+          void getCachedAQIByStation(refreshTarget.stationId).then((cachedReading) => {
+            if (!cachedReading) {
+              setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+              return;
+            }
+            setSelectedLocation(cachedReading);
+            setCurrentAQIReading(cachedReading);
+            setCurrentAQI(cachedReading);
+            setErrorMessage(null);
+          });
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
+    }
 
     const timer = setTimeout(() => setToastMessage(null), 2400);
 
     return () => clearTimeout(timer);
-  }, [setCurrentAQI]);
+  }, [hasSavedHomeLocation, isLocationHydrated, setCurrentAQI]);
 
   useEffect(() => {
     setSelectedLocation(currentAQI);
@@ -91,7 +128,15 @@ export default function HomeScreen() {
       setErrorMessage(null);
     } catch (error: unknown) {
       console.error('Home AQI location refresh failed:', error);
-      setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+      const cachedReading = await getCachedAQIByStation(CITY_STATIONS.Bengaluru.stationId);
+      if (cachedReading) {
+        setSelectedLocation(cachedReading);
+        setCurrentAQIReading(cachedReading);
+        setCurrentAQI(cachedReading);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +165,7 @@ export default function HomeScreen() {
             {currentAQIReading.category} air quality near{' '}
             {currentAQIReading.locationName}
           </Text>
+          <Text style={styles.updatedText}>{formatAQIUpdateStatus(currentAQIReading, now)}</Text>
         </TouchableOpacity>
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
@@ -226,6 +272,12 @@ const styles = StyleSheet.create({
     color: '#267D70',
     fontSize: 16,
     fontWeight: '800',
+  },
+  updatedText: {
+    color: '#667875',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 10,
   },
   errorText: {
     color: '#C0392B',

@@ -23,7 +23,10 @@ import {
   AIR_QUALITY_LOAD_ERROR_MESSAGE,
   CITY_STATIONS,
   fetchLiveAQIByStation,
+  getCachedAQIByStation,
 } from '../api/aqiService';
+import { formatAQIUpdateStatus } from '../utils/aqiStatus';
+import { useMinuteClock } from '../utils/useMinuteClock';
 
 type AQIDetailsScreenProps = NativeStackScreenProps<
   RootStackParamList,
@@ -71,6 +74,7 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
     refreshedReading?.id === route.params.id ? refreshedReading : route.params;
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const now = useMinuteClock();
   const { aqiValue, category, locationName } = reading;
   const categoryStyle = categoryStyles[category];
   const isFavorite = favoriteLocations.some((location) => location.id === reading.id);
@@ -104,8 +108,17 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
       .catch((error: unknown) => {
         if (!active) return;
         console.error('AQI details refresh failed:', error);
-        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
-        Alert.alert('Unable to load live AQI', AIR_QUALITY_LOAD_ERROR_MESSAGE);
+        void getCachedAQIByStation(station.stationId).then((cachedReading) => {
+          if (!active) return;
+          if (cachedReading) {
+            setRefreshedReading(cachedReading);
+            setCurrentAQI(cachedReading);
+            setErrorMessage(null);
+            return;
+          }
+          setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+          Alert.alert('Unable to load live AQI', AIR_QUALITY_LOAD_ERROR_MESSAGE);
+        });
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -139,6 +152,7 @@ export default function AQIDetailsScreen({ route }: AQIDetailsScreenProps) {
         <Text style={styles.panelLabel}>Current AQI</Text>
         <Text style={styles.aqiValue}>{aqiValue}</Text>
         {isLoading ? <ActivityIndicator color="#267D70" /> : null}
+        <Text style={styles.updatedText}>{formatAQIUpdateStatus(reading, now)}</Text>
         <View
           style={[
             styles.categoryBadge,
@@ -275,6 +289,12 @@ const styles = StyleSheet.create({
     color: '#12312D',
     fontSize: 68,
     fontWeight: '800',
+    marginBottom: 12,
+  },
+  updatedText: {
+    color: '#667875',
+    fontSize: 13,
+    fontWeight: '700',
     marginBottom: 12,
   },
   categoryBadge: {

@@ -249,11 +249,19 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    getValidAuthToken().then((token) => {
-      if (!mounted) return;
-      setHasValidToken(Boolean(token));
-      setAuthChecked(true);
-    });
+    const restoreAuthentication = async () => {
+      try {
+        const token = await getValidAuthToken();
+        if (mounted) setHasValidToken(Boolean(token));
+      } catch (error) {
+        // Authentication is local-only, but a storage failure must not block launch.
+        console.error('Unable to restore authentication state:', error);
+      } finally {
+        if (mounted) setAuthChecked(true);
+      }
+    };
+
+    void restoreAuthentication();
     return () => {
       mounted = false;
     };

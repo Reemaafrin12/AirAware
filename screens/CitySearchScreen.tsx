@@ -18,6 +18,7 @@ import {
   CITY_COORDINATES,
   CITY_STATIONS,
   fetchLiveAQIByStation,
+  getCachedAQIByStation,
 } from '../api/aqiService';
 import type { AQIReading } from '../types/airQuality';
 
@@ -72,8 +73,16 @@ export default function CitySearchScreen() {
       openAQIDetails({ ...liveReading, alreadyFetched: true });
     } catch (error: unknown) {
       console.error(`City AQI fetch failed for ${city.locationName}:`, error);
-      setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
-      Alert.alert(`Unable to load ${city.locationName} AQI`, AIR_QUALITY_LOAD_ERROR_MESSAGE);
+      const cachedReading = await getCachedAQIByStation(station.stationId);
+      if (cachedReading) {
+        setLiveReadings((current) => ({ ...current, [city.id]: cachedReading }));
+        setCurrentAQI(cachedReading);
+        setErrorMessage(null);
+        openAQIDetails({ ...cachedReading, alreadyFetched: true });
+      } else {
+        setErrorMessage(AIR_QUALITY_LOAD_ERROR_MESSAGE);
+        Alert.alert(`Unable to load ${city.locationName} AQI`, AIR_QUALITY_LOAD_ERROR_MESSAGE);
+      }
     } finally {
       setLoadingCityId(null);
     }

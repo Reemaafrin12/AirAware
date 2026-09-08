@@ -21,6 +21,10 @@ export type AQIReading = {
   /** WAQI station used to obtain this reading, when one is known. */
   stationId?: number;
   pollutants?: AQIPollutants;
+  /** Time the live reading was fetched, used for offline freshness messaging. */
+  fetchedAt?: number;
+  /** Whether the reading came from a live request or the local offline cache. */
+  dataSource?: 'live' | 'cache';
 };
 
 export type FavoriteLocation = AQIReading;

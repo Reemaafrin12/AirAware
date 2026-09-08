@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import CustomDropdownPicker from '../components/CustomDropdownPicker';
+import { useUser } from '../context/UserContext';
 
 const thresholdOptions = [
   'Good (0-50)',
@@ -29,13 +30,22 @@ const scaleOptions = [
 ] as const;
 
 export default function AlertPreferencesScreen() {
+  const { alertPreferences, isUserHydrated, updateAlertPreferences } = useUser();
   const [threshold, setThreshold] =
-    useState<(typeof thresholdOptions)[number] | undefined>(undefined);
-  const [dailyAdvisory, setDailyAdvisory] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
+    useState<(typeof thresholdOptions)[number] | undefined>(alertPreferences.threshold as (typeof thresholdOptions)[number] | undefined);
+  const [dailyAdvisory, setDailyAdvisory] = useState(alertPreferences.dailyAdvisory);
+  const [pushNotifications, setPushNotifications] = useState(alertPreferences.pushNotifications);
   const [preferredScale, setPreferredScale] =
-    useState<(typeof scaleOptions)[number]>('US AQI (0-500)');
+    useState<(typeof scaleOptions)[number]>(alertPreferences.preferredScale as (typeof scaleOptions)[number]);
   const [thresholdError, setThresholdError] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!isUserHydrated) return;
+    setThreshold(alertPreferences.threshold as (typeof thresholdOptions)[number] | undefined);
+    setDailyAdvisory(alertPreferences.dailyAdvisory);
+    setPushNotifications(alertPreferences.pushNotifications);
+    setPreferredScale(alertPreferences.preferredScale as (typeof scaleOptions)[number]);
+  }, [alertPreferences, isUserHydrated]);
 
   const handleSavePreferences = () => {
     if (!threshold) {
@@ -49,6 +59,7 @@ export default function AlertPreferencesScreen() {
       pushNotifications,
       preferredScale,
     };
+    updateAlertPreferences(preferences);
     console.log('Alert Preferences Saved:', preferences);
 
     Alert.alert(
