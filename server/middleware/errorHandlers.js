@@ -9,6 +9,16 @@ function notFoundHandler(request, response) {
 
 function errorHandler(error, _request, response, _next) {
   console.error('Unhandled API error:', error);
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    response.status(400).json({
+      error: {
+        code: 'INVALID_JSON',
+        message: 'Request body must contain valid JSON.',
+      },
+    });
+    return;
+  }
+
   response.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',

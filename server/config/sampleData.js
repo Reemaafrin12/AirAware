@@ -1,12 +1,12 @@
 const locations = [
-  { id: 'bengaluru', name: 'Bengaluru', latitude: 12.9716, longitude: 77.5946 },
-  { id: 'chennai', name: 'Chennai', latitude: 13.0827, longitude: 80.2707 },
-  { id: 'delhi', name: 'Delhi', latitude: 28.6139, longitude: 77.209 },
-  { id: 'hyderabad', name: 'Hyderabad', latitude: 17.385, longitude: 78.4867 },
-  { id: 'kolkata', name: 'Kolkata', latitude: 22.5726, longitude: 88.3639 },
-  { id: 'mumbai', name: 'Mumbai', latitude: 19.076, longitude: 72.8777 },
-  { id: 'pune', name: 'Pune', latitude: 18.5204, longitude: 73.8567 },
-  { id: 'ahmedabad', name: 'Ahmedabad', latitude: 23.0225, longitude: 72.5714 },
+  { id: 'bengaluru', name: 'Bengaluru', city: 'Bengaluru', lat: 12.9716, lng: 77.5946 },
+  { id: 'chennai', name: 'Chennai', city: 'Chennai', lat: 13.0827, lng: 80.2707 },
+  { id: 'delhi', name: 'Delhi', city: 'Delhi', lat: 28.6139, lng: 77.209 },
+  { id: 'hyderabad', name: 'Hyderabad', city: 'Hyderabad', lat: 17.385, lng: 78.4867 },
+  { id: 'kolkata', name: 'Kolkata', city: 'Kolkata', lat: 22.5726, lng: 88.3639 },
+  { id: 'mumbai', name: 'Mumbai', city: 'Mumbai', lat: 19.076, lng: 72.8777 },
+  { id: 'pune', name: 'Pune', city: 'Pune', lat: 18.5204, lng: 73.8567 },
+  { id: 'ahmedabad', name: 'Ahmedabad', city: 'Ahmedabad', lat: 23.0225, lng: 72.5714 },
 ];
 
 const aqiReadings = [
@@ -44,6 +44,8 @@ const userProfiles = [
     id: 'user-1',
     name: 'Aarav Mehta',
     email: 'aarav.mehta@example.com',
+    phone: '+91 98765 43210',
+    address: '221B Green Avenue, Indiranagar, Bengaluru',
     healthSensitivity: 'Medium',
     preferredLocationId: 'bengaluru',
   },
@@ -51,9 +53,24 @@ const userProfiles = [
     id: 'user-2',
     name: 'Priya Sharma',
     email: 'priya.sharma@example.com',
+    phone: '+91 98765 43211',
+    address: '42 Lake Road, Kolkata',
     healthSensitivity: 'High',
     preferredLocationId: 'delhi',
   },
 ];
 
-module.exports = { aqiReadings, healthAdvisories, locations, userProfiles };
+const alertPreferences = {
+  threshold: 100,
+  dailyAdvisory: true,
+  pushNotifications: true,
+  units: 'US AQI (0-500)',
+};
+
+module.exports = {
+  alertPreferences,
+  aqiReadings,
+  healthAdvisories,
+  locations,
+  userProfiles,
+};
