@@ -7,4 +7,5 @@ const parsedPort = Number.parseInt(process.env.PORT ?? '', 10);
 
 module.exports = {
   port: Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : 5000,
+  mongoUri: process.env.MONGODB_URI,
 };

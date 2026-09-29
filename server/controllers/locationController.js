@@ -1,24 +1,44 @@
-const { locations } = require('../config/sampleData');
+const FavoriteLocation = require('../models/FavoriteLocation');
+const mongoose = require('mongoose');
 
-function getLocations(_request, response) {
-  response.json({ data: locations });
+function serializeLocation(location) {
+  return {
+    id: location._id.toString(),
+    name: location.name,
+    city: location.city,
+    lat: location.lat,
+    lng: location.lng,
+  };
 }
 
-function createLocation(request, response) {
-  const location = {
-    id: `location-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+async function getLocations(_request, response) {
+  const locations = await FavoriteLocation.find().sort({ createdAt: 1 });
+  response.json({ data: locations.map(serializeLocation) });
+}
+
+async function createLocation(request, response) {
+  const location = await FavoriteLocation.create({
     name: request.body.name,
     city: request.body.city,
     lat: request.body.lat,
     lng: request.body.lng,
-  };
+  });
 
-  locations.push(location);
-  response.status(201).json({ data: location });
+  response.status(201).json({ data: serializeLocation(location) });
 }
 
-function updateLocation(request, response) {
-  const location = locations.find((item) => item.id === request.params.id);
+async function updateLocation(request, response) {
+  if (!mongoose.isObjectIdOrHexString(request.params.id)) {
+    response.status(404).json({
+      error: { code: 'LOCATION_NOT_FOUND', message: 'Location was not found.' },
+    });
+    return;
+  }
+  const location = await FavoriteLocation.findByIdAndUpdate(
+    request.params.id,
+    { name: request.body.name, city: request.body.city, lat: request.body.lat, lng: request.body.lng },
+    { new: true, runValidators: true },
+  );
   if (!location) {
     response.status(404).json({
       error: { code: 'LOCATION_NOT_FOUND', message: 'Location was not found.' },
@@ -26,25 +46,23 @@ function updateLocation(request, response) {
     return;
   }
 
-  Object.assign(location, {
-    name: request.body.name,
-    city: request.body.city,
-    lat: request.body.lat,
-    lng: request.body.lng,
-  });
-  response.json({ data: location });
+  response.json({ data: serializeLocation(location) });
 }
 
-function deleteLocation(request, response) {
-  const locationIndex = locations.findIndex((item) => item.id === request.params.id);
-  if (locationIndex === -1) {
+async function deleteLocation(request, response) {
+  if (!mongoose.isObjectIdOrHexString(request.params.id)) {
     response.status(404).json({
       error: { code: 'LOCATION_NOT_FOUND', message: 'Location was not found.' },
     });
     return;
   }
-
-  locations.splice(locationIndex, 1);
+  const location = await FavoriteLocation.findByIdAndDelete(request.params.id);
+  if (!location) {
+    response.status(404).json({
+      error: { code: 'LOCATION_NOT_FOUND', message: 'Location was not found.' },
+    });
+    return;
+  }
   response.status(204).send();
 }
 

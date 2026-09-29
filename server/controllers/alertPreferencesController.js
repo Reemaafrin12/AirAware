@@ -1,17 +1,30 @@
-const { alertPreferences } = require('../config/sampleData');
+const AlertPreference = require('../models/AlertPreference');
 
-function getAlertPreferences(_request, response) {
-  response.json({ data: alertPreferences });
+function serializePreferences(preferences) {
+  if (!preferences) {
+    return null;
+  }
+
+  return {
+    threshold: preferences.threshold,
+    dailyAdvisory: preferences.dailyAdvisory,
+    pushNotifications: preferences.pushNotifications,
+    units: preferences.units,
+  };
 }
 
-function updateAlertPreferences(request, response) {
-  Object.assign(alertPreferences, {
+async function getAlertPreferences(_request, response) {
+  response.json({ data: serializePreferences(await AlertPreference.findOne()) });
+}
+
+async function updateAlertPreferences(request, response) {
+  const alertPreferences = await AlertPreference.findOneAndUpdate({}, {
     threshold: request.body.threshold,
     dailyAdvisory: request.body.dailyAdvisory,
     pushNotifications: request.body.pushNotifications,
     units: request.body.units,
-  });
-  response.json({ data: alertPreferences });
+  }, { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true });
+  response.json({ data: serializePreferences(alertPreferences) });
 }
 
 module.exports = { getAlertPreferences, updateAlertPreferences };

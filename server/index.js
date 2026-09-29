@@ -1,5 +1,6 @@
 const express = require('express');
 
+const { connectDatabase } = require('./config/db');
 const { port } = require('./config/env');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandlers');
 const { requestLogger } = require('./middleware/requestLogger');
@@ -13,6 +14,11 @@ app.use(routes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(port, () => {
-  console.log(`AirAware API listening on http://localhost:${port}`);
-});
+async function startServer() {
+  await connectDatabase();
+  app.listen(port, () => {
+    console.log(`AirAware API listening on http://localhost:${port}`);
+  });
+}
+
+startServer();
